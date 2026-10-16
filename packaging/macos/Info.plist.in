@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleExecutable</key><string>GlassStats</string>
+<key>CFBundleIdentifier</key><string>io.github.eduardojsborges.GlassStatsQt</string>
+<key>CFBundleName</key><string>GlassStats</string>
+<key>CFBundleVersion</key><string>0.2.0</string>
+<key>CFBundleShortVersionString</key><string>0.2.0-alpha.1</string>
+<key>CFBundlePackageType</key><string>APPL</string>
+<key>LSMinimumSystemVersion</key><string>14.4</string>
+<key>LSUIElement</key><true/>
+<key>NSHighResolutionCapable</key><true/>
+<key>NSScreenCaptureUsageDescription</key><string>GlassStats can analyze small visible regions in memory to keep overlay text readable. Images are never recorded or uploaded.</string>
+<key>NSAccessibilityUsageDescription</key><string>GlassStats can follow a window you choose when using experimental app attachment.</string>
+</dict></plist>
