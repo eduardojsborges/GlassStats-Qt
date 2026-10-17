@@ -16,6 +16,8 @@ $env:QML_IMPORT_PATH="$PWD/.tools/qt/qml"
 ./build/GlassStats.exe
 ```
 
+For subsequent workspace previews, use `./scripts/Run.ps1` (or `-Build` to rebuild first). No installer is needed. A second launch recovers the existing Qt instance; quit that instance before replacing its binary. `-Profile <directory>` provides a separate test profile.
+
 The optional bridge needs .NET SDK **10.0.401**, LibreHardwareMonitorLib **0.9.6** and ServiceController **10.0.0**; it publishes self-contained. Set `DOTNET_EXE` to a local SDK if needed. The main app has no .NET dependency.
 
 Qt bootstrap reads the official architecture-specific installer metadata, validates archive SHA-1 checksums supplied by Qt, and records SHA-256 download manifests locally. The upstream metadata/checksums share the download trust boundary. `.tools`, build outputs and QA artifacts stay out of Git. Binary dependencies are dynamically linked and deployed alongside the app.
