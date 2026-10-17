@@ -58,3 +58,5 @@ qt_generate_deploy_qml_app_script(TARGET GlassStats OUTPUT_SCRIPT deploy_script 
 install(SCRIPT ${deploy_script})
 install(FILES LICENSE README.md CHANGELOG.md DESTINATION .)
 install(DIRECTORY licenses DESTINATION .)
+install(DIRECTORY docs DESTINATION .)
+install(FILES assets/glassstats-overview.png DESTINATION assets)

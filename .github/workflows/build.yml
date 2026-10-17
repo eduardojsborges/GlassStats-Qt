@@ -89,11 +89,19 @@ jobs:
           cmake --install build --prefix "$PWD/artifacts/GlassStats"
           & .tools/qt/bin/windeployqt.exe --release --qmldir qml --no-translations artifacts/GlassStats/GlassStats.exe
           Copy-Item build/sensor-bridge artifacts/GlassStats -Recurse
+          Copy-Item packaging/windows/setup artifacts/GlassStats -Recurse
           python scripts/prepare_licenses.py --output artifacts/GlassStats/licenses/Qt --sources-output artifacts/corresponding-sources
+          $env:PATH="$env:SystemRoot\System32;$env:SystemRoot"
+          $app=Start-Process "$PWD/artifacts/GlassStats/GlassStats.exe" -ArgumentList @('--qml-check','--profile',"$PWD/artifacts/qa/deployed-profile") -Wait -PassThru
+          if($app.ExitCode -ne 0){throw 'Deployed app failed initialization'}
           Compress-Archive -Path artifacts/GlassStats -DestinationPath artifacts/GlassStats-Qt-0.2.0-alpha.1-windows-x64-portable.zip
       - name: Package Linux/Mac preview
         if: runner.os != 'Windows'
         run: python scripts/package_unix.py --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
+      - name: Initialize packaged Linux AppImage
+        if: runner.os == 'Linux'
+        shell: bash
+        run: QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software APPIMAGE_EXTRACT_AND_RUN=1 ./artifacts/GlassStats-Qt-0.2.0-alpha.1-linux-x64.AppImage --qml-check --profile "$PWD/artifacts/qa/deployed-profile"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

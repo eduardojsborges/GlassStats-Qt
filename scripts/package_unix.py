@@ -19,6 +19,8 @@ def main():
         resources=bundle/'Contents/Resources';resources.mkdir(parents=True,exist_ok=True)
         for filename in ('LICENSE','README.md','VALIDATION.md','CHANGELOG.md'):shutil.copy2(ROOT/filename,resources/filename)
         shutil.copytree(ROOT/'licenses',resources/'licenses',dirs_exist_ok=True)
+        shutil.copytree(ROOT/'docs',resources/'docs',dirs_exist_ok=True)
+        shutil.copytree(ROOT/'assets',resources/'assets',dirs_exist_ok=True)
         run(os.sys.executable,'scripts/prepare_licenses.py','--output',resources/'licenses/Qt')
         # Ad-hoc signing is for bundle integrity, not notarization or trusted publisher identity.
         run('codesign','--force','--deep','--sign','-',bundle)
@@ -53,6 +55,8 @@ def main():
         from PIL import Image
         Image.open(ROOT/'assets/GlassStats.ico').save(appdir/'glassstats-qt.png')
         shutil.copytree(ROOT/'licenses',usr/'licenses',dirs_exist_ok=True)
+        shutil.copytree(ROOT/'docs',usr/'docs',dirs_exist_ok=True)
+        shutil.copytree(ROOT/'assets',usr/'assets',dirs_exist_ok=True)
         run(os.sys.executable,'scripts/prepare_licenses.py','--output',usr/'licenses/Qt')
         for filename in ('LICENSE','README.md','VALIDATION.md','CHANGELOG.md'):shutil.copy2(ROOT/filename,usr/filename)
         tool=ROOT/'.tools/appimagetool-1.9.1-x86_64.AppImage';expected='ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0'
