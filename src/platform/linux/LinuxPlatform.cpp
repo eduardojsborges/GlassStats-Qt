@@ -1,4 +1,5 @@
 #include "LinuxPlatform.h"
+#include <QSystemTrayIcon>
 #include <QFile>
 #include <QDir>
 #include <QRegularExpression>
@@ -20,6 +21,9 @@
 #endif
 
 namespace gs {
+#ifdef GLASSSTATS_X11
+namespace { bool shortcutGrabFailed=false; }
+#endif
 namespace {
 QByteArray readFile(QString path){QFile f(path);return f.open(QIODevice::ReadOnly)?f.readAll():QByteArray();}
 std::optional<double> number(QString path){bool ok;double value=QString::fromUtf8(readFile(path)).trimmed().toDouble(&ok);return ok&&std::isfinite(value)?std::optional<double>(value):std::nullopt;}
@@ -52,6 +56,7 @@ public:SurfaceFrame capture(const CaptureRequest& request)override{
 struct LinuxPlatform::Native {
     bool x11=false,enabled=false;QTimer selectionTimer;QPointF relative;QRect host;
 #ifdef GLASSSTATS_X11
+    QMap<quint64,QString> shortcuts;
     Display* display=nullptr;Window target=0,overlay=0;unsigned long pid=0;QString start;
     std::unique_ptr<QSocketNotifier> notifier;
     Atom atom(const char* name)const{return XInternAtom(display,name,False);}
@@ -63,7 +68,7 @@ struct LinuxPlatform::Native {
 };
 LinuxPlatform::LinuxPlatform():native_(std::make_unique<Native>()){
 #ifdef GLASSSTATS_X11
-    native_->x11=QGuiApplication::platformName()=="xcb";native_->enabled=native_->x11&&qEnvironmentVariableIsSet("GLASSSTATS_EXPERIMENTAL_WINDOWING");if(native_->x11){native_->display=XOpenDisplay(nullptr);if(native_->display){XSetErrorHandler([](Display*,XErrorEvent*){return 0;});native_->notifier=std::make_unique<QSocketNotifier>(ConnectionNumber(native_->display),QSocketNotifier::Read);connect(native_->notifier.get(),&QSocketNotifier::activated,this,[this]{while(XPending(native_->display)){XEvent e;XNextEvent(native_->display,&e);if(e.type==DestroyNotify&&e.xdestroywindow.window==native_->target){detach();emit targetLost();}else if(e.type==KeyPress){auto sym=XLookupKeysym(&e.xkey,0);if(selecting_&&sym==XK_Escape)cancelSelection();else if(!selecting_)emit requestCommand(sym==XK_u||sym==XK_U?"recover":"lock");}else if(selecting_&&e.type==ButtonRelease){auto p=cursor();Window root=DefaultRootWindow(native_->display),child=0,current=root;int rx,ry,wx,wy;unsigned mask;while(XQueryPointer(native_->display,current,&root,&child,&rx,&ry,&wx,&wy,&mask)&&child){current=child;}Window chosen=current;while(chosen&&chosen!=root&&native_->property(chosen,"_NET_WM_PID").isEmpty()){Window parent,*children=nullptr;unsigned count;XQueryTree(native_->display,chosen,&root,&parent,&children,&count);if(children)XFree(children);chosen=parent;}QString reason;if(chosen!=root&&attachTo(chosen,p,&reason))cancelSelection();else emit status(reason.isEmpty()?"Choose an application window.":reason);}else reconcile();}});}}
+    native_->x11=QGuiApplication::platformName()=="xcb";native_->enabled=native_->x11&&qEnvironmentVariableIsSet("GLASSSTATS_EXPERIMENTAL_WINDOWING");if(native_->x11){native_->display=XOpenDisplay(nullptr);if(native_->display){XSetErrorHandler([](Display*,XErrorEvent*){return 0;});native_->notifier=std::make_unique<QSocketNotifier>(ConnectionNumber(native_->display),QSocketNotifier::Read);connect(native_->notifier.get(),&QSocketNotifier::activated,this,[this]{while(XPending(native_->display)){XEvent e;XNextEvent(native_->display,&e);if(e.type==DestroyNotify&&e.xdestroywindow.window==native_->target){detach();emit targetLost();}else if(e.type==KeyPress){auto sym=XLookupKeysym(&e.xkey,0);if(selecting_&&sym==XK_Escape)cancelSelection();else if(!selecting_){auto command=native_->shortcuts.value((quint64(e.xkey.keycode)<<32)|(e.xkey.state&~unsigned(LockMask|Mod2Mask)));if(!command.isEmpty())emit requestCommand(command);}}else if(selecting_&&e.type==ButtonRelease){auto p=cursor();Window root=DefaultRootWindow(native_->display),child=0,current=root;int rx,ry,wx,wy;unsigned mask;while(XQueryPointer(native_->display,current,&root,&child,&rx,&ry,&wx,&wy,&mask)&&child){current=child;}Window chosen=current;while(chosen&&chosen!=root&&native_->property(chosen,"_NET_WM_PID").isEmpty()){Window parent,*children=nullptr;unsigned count;XQueryTree(native_->display,chosen,&root,&parent,&children,&count);if(children)XFree(children);chosen=parent;}QString reason;if(chosen!=root&&attachTo(chosen,p,&reason))cancelSelection();else emit status(reason.isEmpty()?"Choose an application window.":reason);}else reconcile();}});}}
 #endif
     native_->selectionTimer.setSingleShot(true);connect(&native_->selectionTimer,&QTimer::timeout,this,&LinuxPlatform::cancelSelection);
 }
@@ -78,7 +83,11 @@ void LinuxPlatform::initialize(QWindow* w){Platform::initialize(w);
     if(native_->display)native_->overlay=Window(w->winId());
 #endif
 }
-void LinuxPlatform::setLocked(bool value){Platform::setLocked(value);
+void LinuxPlatform::setLocked(bool value){
+    if(value&&!QSystemTrayIcon::isSystemTrayAvailable()){
+        emit status("Click-through requires a working tray in this experimental desktop integration.");return;
+    }
+    Platform::setLocked(value);
 #ifdef GLASSSTATS_X11
     if(native_->display)native_->overlay=Window(window_->winId());
 #endif
@@ -135,7 +144,7 @@ if(attached_){auto active=native_->property(DefaultRootWindow(native_->display),
 return Platform::canHover();}
 QString LinuxPlatform::registerShortcuts(QString lock,QString recover,bool validation){
 #ifdef GLASSSTATS_X11
-if(native_->display){auto root=DefaultRootWindow(native_->display);XUngrabKey(native_->display,AnyKey,AnyModifier,root);if(validation)return {};for(auto text:{lock,recover}){auto key=parseShortcut(text);if(!key)return "Invalid shortcut";unsigned mods=0;if(key->modifiers&2)mods|=ControlMask;if(key->modifiers&1)mods|=Mod1Mask;if(key->modifiers&4)mods|=ShiftMask;if(key->modifiers&8)mods|=Mod4Mask;auto code=XKeysymToKeycode(native_->display,KeySym(key->key));for(unsigned extra:{0u,unsigned(LockMask),unsigned(Mod2Mask),unsigned(LockMask|Mod2Mask)})XGrabKey(native_->display,code,mods|extra,root,False,GrabModeAsync,GrabModeAsync);}XFlush(native_->display);return "X11 shortcuts are experimental; verify registration and keep tray recovery available.";}
+if(native_->display){auto root=DefaultRootWindow(native_->display);XUngrabKey(native_->display,AnyKey,AnyModifier,root);native_->shortcuts.clear();if(validation)return {};if(lock.compare(recover,Qt::CaseInsensitive)==0)return "Lock and recovery shortcuts must differ";XSync(native_->display,False);shortcutGrabFailed=false;auto previous=XSetErrorHandler([](Display*,XErrorEvent*){shortcutGrabFailed=true;return 0;});for(auto text:{lock,recover}){auto key=parseShortcut(text);if(!key){XSetErrorHandler(previous);return "Invalid shortcut";}unsigned mods=0;if(key->modifiers&2)mods|=ControlMask;if(key->modifiers&1)mods|=Mod1Mask;if(key->modifiers&4)mods|=ShiftMask;if(key->modifiers&8)mods|=Mod4Mask;auto code=XKeysymToKeycode(native_->display,KeySym(key->key));native_->shortcuts[(quint64(code)<<32)|mods]=text==recover?"recover":"lock";for(unsigned extra:{0u,unsigned(LockMask),unsigned(Mod2Mask),unsigned(LockMask|Mod2Mask)})XGrabKey(native_->display,code,mods|extra,root,False,GrabModeAsync,GrabModeAsync);}XSync(native_->display,False);XSetErrorHandler(previous);if(shortcutGrabFailed){XUngrabKey(native_->display,AnyKey,AnyModifier,root);native_->shortcuts.clear();XFlush(native_->display);return "An X11 shortcut is already registered or unavailable; choose another combination.";}return {};}
 #endif
 return Platform::registerShortcuts(lock,recover,validation);}
 bool LinuxPlatform::startupEnabled()const{return QFileInfo::exists(QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation)+"/autostart/glassstats-qt.desktop");}

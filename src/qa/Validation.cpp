@@ -13,6 +13,7 @@
 #include <QElapsedTimer>
 #include <QQuickItem>
 #include <QThread>
+#include <QCursor>
 #ifdef Q_OS_WIN
 #include <windows.h>
 #include <psapi.h>
@@ -20,6 +21,7 @@
 
 namespace gs {
 namespace {
+QQuickItem* findItem(QQuickItem* root,const QString& name){if(root->objectName()==name)return root;for(auto child:root->childItems())if(auto found=findItem(child,name))return found;return nullptr;}
 void write(QString path,QJsonObject object){QSaveFile f(path);if(f.open(QIODevice::WriteOnly)){f.write(QJsonDocument(object).toJson());f.commit();}}
 void screenCapture(Controller* app,QString path){
 #ifdef Q_OS_WIN
@@ -74,6 +76,16 @@ Q_UNUSED(handle);Q_UNUSED(cmd);
         steps->push_back({"Compact",300,[=]{auto b=app->platform()->bounds();app->setSetting("ViewMode","Compact");Q_UNUSED(b);return true;}});
         steps->push_back({"CompactFits",700,[=]{auto b=app->platform()->bounds();window->grabWindow().save(directory+"/compact-white.png");screenCapture(app,directory+"/screen-compact-white.png");return b.width()>b.height()&&b.height()>20;}});
         steps->push_back({"CompactWhiteTextReadable",400,[=]{for(auto id:{"cpu.compact.value","gpu.compact.temperature","ram.compact.value","vram.compact.value","compact.settings","compact.view"}){auto v=app->textColors().value(id).toMap();if(v.isEmpty()||contrast(v["color"].value<QColor>(),Qt::white)<4.5)return false;}return true;}});
+        steps->push_back({"HoverMetric",100,[=]{auto metric=findItem(window->contentItem(),"metric.cpu.compact");if(!metric)return false;QCursor::setPos(window->mapToGlobal(metric->mapToScene(QPointF(10,10)).toPoint()));return true;}});
+        steps->push_back({"HoverOutsideCardWithoutActivation",1000,[=]{auto metric=findItem(window->contentItem(),"metric.cpu.compact");auto popup=metric?metric->findChild<QObject*>("detail.cpu.compact"):nullptr;bool visible=popup&&popup->property("visible").toBool();bool outside=false;for(auto w:QGuiApplication::allWindows())if(w!=window&&w->isVisible()&&w->flags().testFlag(Qt::Popup)&&!window->geometry().contains(w->geometry()))outside=true;
+#ifdef Q_OS_WIN
+            QJsonArray windows;for(auto w:QGuiApplication::allWindows())windows.append(QJsonObject{{"Name",w->objectName()},{"Title",w->title()},{"Visible",w->isVisible()},{"Flags",double(w->flags().toInt())},{"X",w->x()},{"Y",w->y()},{"Width",w->width()},{"Height",w->height()}});write(directory+"/hover.json",{{"FoundPopup",popup!=nullptr},{"Visible",visible},{"Outside",outside},{"Foreground",QString::number(quintptr(GetForegroundWindow()))},{"Host",QString::number(handle)},{"Windows",windows}});screenCapture(app,directory+"/screen-hover.png");return visible&&outside&&GetForegroundWindow()==reinterpret_cast<HWND>(handle);
+#else
+            return visible&&outside;
+#endif
+        }});
+        steps->push_back({"OpenSettings",100,[=]{app->action("settings");return true;}});
+        steps->push_back({"SettingsFirstOpenVisible",600,[=]{auto settings=window->findChild<QWindow*>("settingsWindow");bool ok=settings&&settings->isVisible()&&settings->windowState()!=Qt::WindowMinimized;if(settings)settings->hide();command(0x8103);return ok;}});
         steps->push_back({"FahrenheitLargeFonts",200,[=]{app->setSetting("TemperatureUnit","F");app->setSetting("CompactValueFontSize",48);app->setSetting("CompactDetailFontSize",24);return true;}});
         steps->push_back({"LargeFontsFit",500,[=]{auto b=app->platform()->bounds();return b.width()>100&&b.height()>30;}});
         steps->push_back({"HiddenMetrics",200,[=]{app->setSetting("ShowCpu",false);app->setSetting("ShowGpu",false);app->setSetting("ShowRam",false);app->setSetting("ShowVram",false);return true;}});

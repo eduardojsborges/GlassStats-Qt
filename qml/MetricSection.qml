@@ -6,6 +6,7 @@ Item {
     required property string metric
     required property string title
     required property bool compact
+    objectName:"metric."+metric+(compact?".compact":".full")
     property bool memory: metric === "ram" || metric === "vram"
     property string labelPrefix: metric+(compact?".compact.":".full.")
     property var reading: app.metrics[metric] || {}
@@ -74,7 +75,7 @@ Item {
     onVisibleChanged:if(!visible)details.close()
     Connections {target:hover;function onHoveredChanged(){if(!hover.hovered)details.close()} }
     Connections {target:app;function onDismissDetails(){details.close()}function onNativeChanged(){if(!app.canHover)details.close()} }
-    DetailPopup {id:details;metric:section.metric;title:section.title;parent:section}
+    DetailPopup {id:details;objectName:"detail."+section.metric+(section.compact?".compact":".full");metric:section.metric;title:section.title;anchorItem:section}
     Accessible.role:Accessible.StaticText
     Accessible.name:section.title+" "+section.usageText
 }

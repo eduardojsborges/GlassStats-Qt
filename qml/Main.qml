@@ -43,8 +43,8 @@ Window {
                 AdaptiveLabel {id:header;labelId:"header";text:"GlassStats";font.pixelSize:app.settings.TitleFontSize;font.weight:Font.DemiBold;anchors.verticalCenter:parent.verticalCenter}
                 Row {
                     anchors.right:parent.right;anchors.verticalCenter:parent.verticalCenter;spacing:5
-                    ToolButton {width:24;height:24;hoverEnabled:true;Accessible.name:"Switch to compact view";onClicked:app.action("view");background:Rectangle{color:parent.hovered?"#207CA8FF":"transparent";radius:5}contentItem:AdaptiveLabel{labelId:"full.view";text:"⤢";font.pixelSize:20;horizontalAlignment:Text.AlignHCenter}}
-                    ToolButton {width:24;height:24;hoverEnabled:true;Accessible.name:"Settings";onClicked:app.action("settings");background:Rectangle{color:parent.hovered?"#207CA8FF":"transparent";radius:5}contentItem:AdaptiveLabel{labelId:"full.settings";text:"⚙";font.pixelSize:19;horizontalAlignment:Text.AlignHCenter}
+                    ToolButton {width:24;height:24;hoverEnabled:true;Accessible.name:"Switch to compact view";onClicked:app.action("view");background:Rectangle{color:parent.hovered?"#207CA8FF":"transparent";radius:5}contentItem:AdaptiveIcon{labelId:"full.view";glyph:"view"}}
+                    ToolButton {width:24;height:24;hoverEnabled:true;Accessible.name:"Settings";onClicked:app.action("settings");background:Rectangle{color:parent.hovered?"#207CA8FF":"transparent";radius:5}contentItem:AdaptiveIcon{labelId:"full.settings";glyph:"settings"}
                         Rectangle{visible:app.updater.available;width:5;height:5;radius:3;color:window.accent;anchors.right:parent.right;anchors.top:parent.top}
                     }
                 }
@@ -79,8 +79,8 @@ Window {
             Item{width:14;height:1}
             Column {
                 spacing:2;anchors.verticalCenter:parent.verticalCenter
-                ToolButton {width:24;height:24;hoverEnabled:true;Accessible.name:"Switch to full view";onClicked:app.action("view");background:Rectangle{color:parent.hovered?"#207CA8FF":"transparent";radius:5}contentItem:AdaptiveLabel{labelId:"compact.view";text:"⤢";font.pixelSize:20;horizontalAlignment:Text.AlignHCenter}}
-                ToolButton {width:24;height:24;hoverEnabled:true;Accessible.name:"Settings";onClicked:app.action("settings");background:Rectangle{color:parent.hovered?"#207CA8FF":"transparent";radius:5}contentItem:AdaptiveLabel{labelId:"compact.settings";text:"⚙";font.pixelSize:19;horizontalAlignment:Text.AlignHCenter}
+                ToolButton {width:24;height:24;hoverEnabled:true;Accessible.name:"Switch to full view";onClicked:app.action("view");background:Rectangle{color:parent.hovered?"#207CA8FF":"transparent";radius:5}contentItem:AdaptiveIcon{labelId:"compact.view";glyph:"view"}}
+                ToolButton {width:24;height:24;hoverEnabled:true;Accessible.name:"Settings";onClicked:app.action("settings");background:Rectangle{color:parent.hovered?"#207CA8FF":"transparent";radius:5}contentItem:AdaptiveIcon{labelId:"compact.settings";glyph:"settings"}
                     Rectangle{visible:app.updater.available;width:5;height:5;radius:3;color:window.accent;anchors.right:parent.right;anchors.top:parent.top}
                 }
             }

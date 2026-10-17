@@ -30,7 +30,7 @@ void Platform::fitCurrent(){auto r=bounds();fitDesktop(QPoint(r.x()+r.width(),r.
 void Platform::beginDrag(){if(locked_)return;dragging_=true;if(window_)window_->startSystemMove();}
 void Platform::updateDrag(){}
 void Platform::endDrag(){if(!dragging_)return;dragging_=false;fitCurrent();emit positionCommitted();}
-void Platform::setLocked(bool locked){locked_=locked;if(window_)window_->setFlag(Qt::WindowTransparentForInput,locked);emit changed();}
+void Platform::setLocked(bool locked){locked_=locked;if(window_){bool visible=window_->isVisible();window_->setFlag(Qt::WindowTransparentForInput,locked);if(visible)window_->show();}emit changed();}
 void Platform::setUserVisible(bool visible){userVisible_=visible;if(window_)window_->setVisible(visible&&!selecting_);emit changed();}
 void Platform::reconcile(){}
 void Platform::beginSelection(){emit status("Window attachment is unavailable in this desktop session.");}
