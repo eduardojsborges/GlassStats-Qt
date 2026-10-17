@@ -86,7 +86,7 @@ jobs:
         shell: pwsh
         run: |
           $env:PATH="$PWD\.tools\qt\bin;"+$env:PATH
-          cmake --install build --prefix "$PWD/artifacts/GlassStats"
+          cmake --install build --prefix "$PWD/artifacts/GlassStats" --component Unspecified
           & .tools/qt/bin/windeployqt.exe --release --qmldir qml --no-translations artifacts/GlassStats/GlassStats.exe
           Copy-Item build/sensor-bridge artifacts/GlassStats -Recurse
           Copy-Item packaging/windows/setup artifacts/GlassStats -Recurse

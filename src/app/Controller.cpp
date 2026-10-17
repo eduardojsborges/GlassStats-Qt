@@ -49,8 +49,8 @@ Controller::Controller(bool validation,QString profile,QObject* parent):QObject(
 Controller::~Controller(){shuttingDown_=true;sampleTimer_.stop();adaptiveTimer_.stop();watchdog_.stop();dragTimer_.stop();save();tray_.hide();platform_->cancelSelection();QMetaObject::invokeMethod(worker_,[this]{monitor_.reset();capture_.reset();},Qt::BlockingQueuedConnection);monitorThread_.quit();monitorThread_.wait();}
 void Controller::initialize(QQuickWindow* w){window_=w;platform_->initialize(w);connect(w,&QWindow::screenChanged,this,[this]{invalidate();QTimer::singleShot(0,this,[this]{fitWindow();});});
     if(!validation_){tray_.setIcon(QIcon(":/assets/GlassStats.ico"));tray_.setToolTip("GlassStats · Performance at a glance");buildMenu();tray_.setContextMenu(&menu_);tray_.show();}
-    if(!validation_&&settings_["StartAtSignIn"].toBool()&&!platform_->startupEnabled()){
-        if(platform_->legacyStartup()){settings_["StartAtSignIn"]=false;setStatus("Legacy GlassStats starts at sign-in. Switch startup explicitly in Settings when ready.");}
+    if(!validation_&&settings_["StartAtSignIn"].toBool()){
+        if(platform_->legacyStartup()&&!platform_->startupEnabled()){settings_["StartAtSignIn"]=false;setStatus("Legacy GlassStats starts at sign-in. Switch startup explicitly in Settings when ready.");}
         else {auto error=platform_->setStartup(true);if(!error.isEmpty()){settings_["StartAtSignIn"]=false;setStatus(error);}}
         saveTimer_.start();
     }

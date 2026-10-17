@@ -4,9 +4,9 @@ $root=Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $root
 $qt=Join-Path $root '.tools\qt'
 $env:PATH=(Join-Path $qt 'bin')+';'+$env:PATH
-$payload=Join-Path $root 'artifacts\GlassStats'
+$payload=Join-Path $root 'artifacts\windows\GlassStats'
 New-Item -ItemType Directory -Path artifacts -Force|Out-Null
-& cmake --install build --prefix $payload *> artifacts\deploy.log
+& cmake --install build --prefix $payload --component Unspecified *> artifacts\deploy.log
 if($LASTEXITCODE -ne 0){throw 'Qt deployment failed.'}
 & "$qt\bin\windeployqt.exe" --release --verbose 0 --qmldir "$root\qml" --no-translations --compiler-runtime "$payload\GlassStats.exe" >> artifacts\deploy.log 2>&1
 if($LASTEXITCODE -ne 0){throw 'QML deployment failed.'}
