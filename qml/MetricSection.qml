@@ -67,7 +67,7 @@ Item {
             Component.onCompleted:app.registerExclusion(bar)
             Component.onDestruction:app.unregisterExclusion(bar)
         }
-        AdaptiveLabel {id:pct;labelId:section.labelPrefix+"percent";text:section.usageText;font.pixelSize:section.detailSize;font.weight:Font.DemiBold;preferred:app.colors.accent || "#7CA8FF"}
+        AdaptiveLabel {id:pct;labelId:section.labelPrefix+"percent";text:section.usageText;font.pixelSize:section.detailSize;font.weight:Font.DemiBold;preferred:app.colors.accentText || "#7CA8FF"}
     }
     HoverHandler { id:hover;enabled:section.compact&&app.canHover }
     Timer { interval:400;running:hover.hovered&&section.compact&&app.canHover;onTriggered:details.open() }

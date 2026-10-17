@@ -5,9 +5,10 @@ Set-Location -LiteralPath $root
 $qt=Join-Path $root '.tools\qt'
 $env:PATH=(Join-Path $qt 'bin')+';'+$env:PATH
 $payload=Join-Path $root 'artifacts\GlassStats'
-& cmake --install build --prefix $payload
+New-Item -ItemType Directory -Path artifacts -Force|Out-Null
+& cmake --install build --prefix $payload *> artifacts\deploy.log
 if($LASTEXITCODE -ne 0){throw 'Qt deployment failed.'}
-& "$qt\bin\windeployqt.exe" --release --qmldir "$root\qml" --no-translations --compiler-runtime "$payload\GlassStats.exe"
+& "$qt\bin\windeployqt.exe" --release --verbose 0 --qmldir "$root\qml" --no-translations --compiler-runtime "$payload\GlassStats.exe" >> artifacts\deploy.log 2>&1
 if($LASTEXITCODE -ne 0){throw 'QML deployment failed.'}
 & "$root\.tools\python\Scripts\python.exe" scripts\prepare_licenses.py --output "$payload\licenses\Qt" --sources-output "$root\artifacts\corresponding-sources"
 if($LASTEXITCODE -ne 0){throw 'Qt source/license preparation failed.'}
@@ -16,7 +17,8 @@ New-Item -ItemType Directory -Path "$payload\setup" -Force|Out-Null
 Copy-Item -Path packaging\windows\setup\*.ps1 -Destination "$payload\setup" -Force
 Copy-Item -LiteralPath README.md,DEVELOPMENT.md,VALIDATION.md,CHANGELOG.md,LICENSE -Destination $payload -Force
 Copy-Item -LiteralPath assets\GlassStats.ico -Destination $payload -Force
-Copy-Item -LiteralPath assets\glassstats-overview.png -Destination "$payload\assets\glassstats-overview.png" -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Path "$payload\assets" -Force|Out-Null
+Copy-Item -LiteralPath assets\glassstats-overview.png -Destination "$payload\assets\glassstats-overview.png" -Force
 Copy-Item -Path docs -Destination $payload -Recurse -Force
 if(-not $VcRedistributable){$VcRedistributable=Join-Path $root '..\GlassStats\.tools\vc_redist.x64.exe'}
 if(-not $PawnIoSetup){$PawnIoSetup=Join-Path $root '..\GlassStats\.tools\reference\LibreHardwareMonitor-0.9.6\LibreHardwareMonitor\Resources\PawnIO_setup.exe'}

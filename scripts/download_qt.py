@@ -76,6 +76,12 @@ def main():
                     raise RuntimeError('Unsafe Qt archive path')
             archive.extractall(args.output)
     qt=args.output
+    if args.host == 'linux':
+        # Qt's ICU archive is flat, while ELF dependencies resolve from lib/.
+        (qt/'lib').mkdir(exist_ok=True)
+        import shutil
+        for library in qt.glob('libicu*.so*'):
+            shutil.copy2(library,qt/'lib'/library.name)
     # Relocate using Qt's supported qt.conf; CMake configs derive their prefix.
     (qt/'bin'/'qt.conf').write_text('[Paths]\nPrefix=..\n',encoding='utf-8')
     if args.host != 'windows':

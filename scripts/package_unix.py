@@ -55,9 +55,9 @@ def main():
         shutil.copytree(ROOT/'licenses',usr/'licenses',dirs_exist_ok=True)
         run(os.sys.executable,'scripts/prepare_licenses.py','--output',usr/'licenses/Qt')
         for filename in ('LICENSE','README.md','VALIDATION.md','CHANGELOG.md'):shutil.copy2(ROOT/filename,usr/filename)
-        tool=ROOT/'.tools/appimagetool-x86_64.AppImage';expected='95cbe7cce9717fce90c484e34052ee7c7f1d7635b33c12525b4776826a7d29b6'
+        tool=ROOT/'.tools/appimagetool-1.9.1-x86_64.AppImage';expected='ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0'
         if not tool.exists():
-            with urllib.request.urlopen('https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage',timeout=120) as source,tool.open('wb') as target:shutil.copyfileobj(source,target)
+            with urllib.request.urlopen('https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage',timeout=120) as source,tool.open('wb') as target:shutil.copyfileobj(source,target)
         if hashlib.sha256(tool.read_bytes()).hexdigest()!=expected:raise RuntimeError('Pinned appimagetool checksum mismatch; review/update explicitly')
         tool.chmod(0o755);env=os.environ.copy();env['ARCH']='x86_64';env['APPIMAGE_EXTRACT_AND_RUN']='1'
         image=artifacts/f'GlassStats-Qt-{VERSION}-linux-x64.AppImage';run(tool,appdir,image,env=env)
