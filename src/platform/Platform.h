@@ -45,6 +45,7 @@ public:
     virtual QVector<QRect> coveredAreas() const { return {}; }
     virtual bool canHover() const { return effectiveVisible()&&!selecting_&&!locked_; }
     virtual bool effectiveVisible() const { return window_&&window_->isVisible(); }
+    virtual bool canSampleSurface() const { return effectiveVisible(); }
     virtual QString attachmentDescription() const { return "Desktop overlay"; }
     virtual QString backdropDescription() const { return "Translucent tint (native blur unavailable)"; }
     virtual void place(Placement placement);

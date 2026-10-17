@@ -14,6 +14,8 @@ class WindowsPlatform final:public Platform {
     QVector<QWindow*> highlights_;QTimer selectionTimeout_;
     bool consumeUp_=false,selectionValid_=false;QPoint selectionPoint_;
     QString selectionReason_;
+    bool sessionLocked_=false,displayOn_=true;
+    HPOWERNOTIFY powerNotification_=nullptr;
     static WindowsPlatform* instance_;
     static void CALLBACK eventProc(HWINEVENTHOOK,DWORD,HWND,LONG,LONG,DWORD,DWORD);
     static LRESULT CALLBACK mouseProc(int,WPARAM,LPARAM);
@@ -34,6 +36,7 @@ public:
     QVector<QRect> coveredAreas()const override;
     bool canHover()const override;
     bool effectiveVisible()const override;
+    bool canSampleSurface()const override{return effectiveVisible()&&!sessionLocked_&&displayOn_;}
     QString attachmentDescription()const override;
     QString backdropDescription()const override;
     void place(Placement p)override;

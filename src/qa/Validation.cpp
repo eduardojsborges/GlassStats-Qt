@@ -51,7 +51,13 @@ int runTestHost(QString directory){QDir().mkpath(directory);HostWindow host;host
     ShowWindow(reinterpret_cast<HWND>(host.winId()),SW_SHOWNORMAL);SetForegroundWindow(reinterpret_cast<HWND>(host.winId()));
 #endif
     write(directory+"/host.json",{{"Host",QString::number(quintptr(host.winId()))},{"Cover",QString::number(quintptr(host.cover->winId()))},{"Pid",QCoreApplication::applicationPid()}});});return QApplication::exec();}
-void runValidation(Controller* app,QQuickWindow* window,QString directory,bool soak){if(directory.isEmpty())directory=QDir::currentPath()+"/artifacts/qa/"+(soak?"stability":"smoke");QDir().mkpath(directory);auto fixture=new QProcess(app);fixture->setProgram(QCoreApplication::applicationFilePath());fixture->setArguments({"--test-host","--qa-dir",directory});fixture->start();auto timer=new QTimer(app);timer->setInterval(250);auto wait=std::make_shared<QElapsedTimer>();wait->start();QObject::connect(timer,&QTimer::timeout,app,[=]{auto handle=handleFrom(directory+"/host.json");if(!handle&&wait->elapsed()<10000)return;timer->stop();if(!handle){write(directory+"/result.json",{{"Passed",false},{"Error","QA host did not start"}});QCoreApplication::exit(1);return;}auto command=[handle](int cmd){
+void runValidation(Controller* app,QQuickWindow* window,QString directory,bool soak){
+#ifdef Q_OS_WIN
+    SetThreadExecutionState(ES_CONTINUOUS|ES_DISPLAY_REQUIRED|ES_SYSTEM_REQUIRED);
+    DWORD_PTR reply=0;SendMessageTimeoutW(HWND_BROADCAST,WM_SYSCOMMAND,SC_MONITORPOWER,-1,SMTO_ABORTIFHUNG,200,&reply);
+    QObject::connect(qApp,&QCoreApplication::aboutToQuit,qApp,[]{SetThreadExecutionState(ES_CONTINUOUS);});
+#endif
+if(directory.isEmpty())directory=QDir::currentPath()+"/artifacts/qa/"+(soak?"stability":"smoke");QDir().mkpath(directory);auto fixture=new QProcess(app);fixture->setProgram(QCoreApplication::applicationFilePath());fixture->setArguments({"--test-host","--qa-dir",directory});fixture->start();auto timer=new QTimer(app);timer->setInterval(250);auto wait=std::make_shared<QElapsedTimer>();wait->start();QObject::connect(timer,&QTimer::timeout,app,[=]{auto handle=handleFrom(directory+"/host.json");if(!handle&&wait->elapsed()<10000)return;timer->stop();if(!handle){write(directory+"/result.json",{{"Passed",false},{"Error","QA host did not start"}});QCoreApplication::exit(1);return;}auto command=[handle](int cmd){
 #ifdef Q_OS_WIN
 PostMessageW(reinterpret_cast<HWND>(handle),UINT(cmd),0,0);
 #else

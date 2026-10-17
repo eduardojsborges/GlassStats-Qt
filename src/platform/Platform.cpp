@@ -20,10 +20,10 @@ SurfaceFrame analyzeSurface(const CaptureRequest& r,const QImage& image){
     }return result;
 }
 void Platform::initialize(QWindow* w){window_=w;window_->setFlag(Qt::Tool,true);window_->setFlag(Qt::FramelessWindowHint,true);window_->setFlag(Qt::WindowStaysOnTopHint,true);window_->setFlag(Qt::WindowDoesNotAcceptFocus,true);}
-QVector<Monitor> Platform::monitors()const{QVector<Monitor> list;for(auto screen:QGuiApplication::screens()){double d=screen->devicePixelRatio();QRect b=screen->geometry(),w=screen->availableGeometry();list<<Monitor{QRect(b.topLeft()*d,b.size()*d),QRect(w.topLeft()*d,w.size()*d),d*96};}return list;}
-QRect Platform::bounds()const{if(!window_)return {};double d=window_->devicePixelRatio();return QRect(window_->position()*d,window_->size()*d);}
+QVector<Monitor> Platform::monitors()const{QVector<Monitor> list;for(auto screen:QGuiApplication::screens()){double pixelRatio=screen->devicePixelRatio();QRect b=screen->geometry(),w=screen->availableGeometry();list<<Monitor{QRect(b.topLeft()*pixelRatio,b.size()*pixelRatio),QRect(w.topLeft()*pixelRatio,w.size()*pixelRatio),pixelRatio*96};}return list;}
+QRect Platform::bounds()const{if(!window_)return {};double pixelRatio=window_->devicePixelRatio();return QRect(window_->position()*pixelRatio,window_->size()*pixelRatio);}
 QPoint Platform::cursor()const{auto p=QCursor::pos();auto screen=QGuiApplication::screenAt(p);return p*(screen?screen->devicePixelRatio():1);}
-void Platform::place(Placement p){placed_=p;if(window_){double d=window_->devicePixelRatio();window_->setGeometry(QRect(p.rect.topLeft()/d,p.rect.size()/d));}emit placementChanged();}
+void Platform::place(Placement p){placed_=p;if(window_){double pixelRatio=window_->devicePixelRatio();window_->setGeometry(QRect(p.rect.topLeft()/pixelRatio,p.rect.size()/pixelRatio));}emit placementChanged();}
 void Platform::setLayout(QSizeF logical,double scale,double radius){logical_=logical;scale_=scale;radius_=radius;}
 Placement Platform::fitDesktop(std::optional<QPoint> anchor){auto p=fit(monitors(),anchor,logical_,scale_,radius_,cursor());place(p);return p;}
 void Platform::fitCurrent(){auto r=bounds();fitDesktop(QPoint(r.x()+r.width(),r.y()));}
