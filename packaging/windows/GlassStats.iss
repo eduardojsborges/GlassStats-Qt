@@ -25,8 +25,13 @@ UninstallDisplayIcon={app}\GlassStats.exe
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.19045
+#ifdef QaInstall
+Compression=none
+SolidCompression=no
+#else
 Compression=lzma2
 SolidCompression=yes
+#endif
 WizardStyle=modern
 CloseApplications=yes
 RestartApplications=no

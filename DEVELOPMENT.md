@@ -30,8 +30,11 @@ Package prerequisites: Inno Setup 6.7.3, Microsoft's signed x64 VC redistributab
 
 ```sh
 python3 -m venv .tools/python
-.tools/python/bin/pip install py7zr==1.1.4
+.tools/python/bin/pip install py7zr==1.1.4 Pillow==11.3.0
 .tools/python/bin/python scripts/download_qt.py --host linux # or macos
+export PATH="$PWD/.tools/qt/bin:$PATH"
+# Linux also needs Qt's bundled ICU/runtime libraries during configure and tests:
+export LD_LIBRARY_PATH="$PWD/.tools/qt/lib:${LD_LIBRARY_PATH:-}"
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$PWD/.tools/qt"
 cmake --build build --parallel 4
 ctest --test-dir build --output-on-failure
@@ -48,6 +51,8 @@ Linux needs X11 development libraries and Qt's runtime XCB/Wayland dependencies;
 - `GlassStats --test-host --qa-dir <directory>` starts a separate host and covering window; Windows QA messages are `0x8101`–`0x810F`.
 
 Validation modes never register startup/global shortcuts or write normal preferences. Screenshots are produced only by explicit QA runs; production capture does not save pixels. Validation profiles use separate single-instance endpoints. Release/package claims must distinguish automated checks from real-device testing.
+
+On Windows, unlock the interactive desktop before visual checks. A locked or sleeping display cannot supply reliable composed-screen evidence. QA runs keep the display awake for their duration; normal monitoring does not. Leave the QA host open until a stability run completes. The progress file reports cumulative CPU normalized across logical processors, private/working-set bytes, handles and GDI objects; inspect the full time series rather than treating one low-CPU sample as a stability result.
 
 ## Publication
 

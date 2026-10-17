@@ -4,10 +4,14 @@ This is the **0.2.0-alpha.1 development preview**, not a declaration of universa
 
 ## Current evidence
 
-- The Windows x64 C++/Qt build and ported core tests run locally.
-- Native UI automation uses a separate host/cover process. Early checks exposed a Qt/native visibility mismatch; visibility was synchronized before the composed-screen readability checks.
-- Final test counts, installer results and stability measurements are recorded after their runs complete. Local evidence lives under `artifacts/qa` and is not committed.
-- CI builds/checks Windows, Ubuntu, Intel Mac and Apple Silicon Mac independently. Build success proves compilation and test results only, not native hardware/window behavior.
+- Windows x64 Release build: **27 core cases passed** (29 Qt Test results including initialization/cleanup), with no failures or skips.
+- Windows native smoke run: **34 checks passed**, using separate host/cover processes. Checks include both layouts, bright-background foreground contrast, unchanged opacity, large fonts/Fahrenheit, hidden metrics, attachment movement/minimization/overlap/tiny-host fitting, selection cancellation, locked recovery, target closure and first-open Settings visibility.
+- Hover details were verified outside the card while the host retained foreground focus. This exposed a focus-stealing Qt popup; the final implementation uses an explicit non-activating tooltip window. Composed-screen images of the full and compact cards over white/black content were inspected, including their borders and adaptive toolbar icons.
+- Windows production installer and portable ZIP were built, with SHA-256 sidecars and dependency licenses/source access. A separate per-user QA installer installed into the workspace, launched its deployed UI/provider successfully, then uninstalled successfully and removed the app executable. This does **not** validate administrator service/driver installation or all production installer paths.
+- Four-platform CI run [38984697385](https://github.com/eduardojsborges/GlassStats-Qt/actions/runs/38984697385) passed Windows x64, Ubuntu x64, Intel Mac and Apple Silicon builds/tests/packaging. Later revisions must pass their own CI run. Build success does not establish native hardware/window compatibility.
+- The two-hour Windows run for revision `b9f6e4c` was started at **2026-10-17 00:13:26 UTC** with adaptation and attachment enabled, alternating layouts and white/black/split/patterned backgrounds. Its result is **pending**, not a passed stability gate. Live measurements are in `artifacts/qa/stability-b9f6e4c/soak-progress.json`; completion writes `soak-result.json`. Closing the QA host or ending the process invalidates the run.
+
+Local evidence is under `artifacts/qa` and is not committed. The legacy repository remained clean; its installation, updater and preference file were not changed. Screen captures are explicit QA artifacts only; ordinary monitoring never records screen buffers.
 
 ## Required manual/device coverage
 

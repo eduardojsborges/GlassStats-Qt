@@ -37,6 +37,8 @@ On Linux/macOS, attachment remains opt-in and unverified: `GLASSSTATS_EXPERIMENT
 
 Experimental X11/macOS screen analysis requires `GLASSSTATS_EXPERIMENTAL_CAPTURE=1`; macOS also requires Screen Recording permission. Without access, foreground glyph halos protect readability. These flags do not imply feature parity. GPU/sensor availability depends on hardware and drivers.
 
+Linux click-through requires a working desktop tray during this experimental phase, so locking cannot remove the available recovery control. Native Wayland global shortcuts are unavailable until portal integration is validated.
+
 ## Build and packages
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for pinned Qt setup, CMake builds, tests, validation fixtures, and platform packaging. Qt is dynamically linked. A ready-to-run portable Windows copy must contain the whole deployed folder, not only the EXE. Source archives are not app packages.
