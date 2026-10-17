@@ -88,6 +88,7 @@ jobs:
           $env:PATH="$PWD\.tools\qt\bin;"+$env:PATH
           cmake --install build --prefix "$PWD/artifacts/GlassStats" --component Unspecified
           & .tools/qt/bin/windeployqt.exe --release --qmldir qml --no-translations artifacts/GlassStats/GlassStats.exe
+          ./scripts/Copy-CompilerRuntime.ps1 -Destination artifacts/GlassStats
           Copy-Item build/sensor-bridge artifacts/GlassStats -Recurse
           Copy-Item packaging/windows/setup artifacts/GlassStats -Recurse
           python scripts/prepare_licenses.py --output artifacts/GlassStats/licenses/Qt --sources-output artifacts/corresponding-sources

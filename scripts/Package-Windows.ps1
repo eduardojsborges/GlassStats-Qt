@@ -10,6 +10,7 @@ New-Item -ItemType Directory -Path artifacts -Force|Out-Null
 if($LASTEXITCODE -ne 0){throw 'Qt deployment failed.'}
 & "$qt\bin\windeployqt.exe" --release --verbose 0 --qmldir "$root\qml" --no-translations --compiler-runtime "$payload\GlassStats.exe" >> artifacts\deploy.log 2>&1
 if($LASTEXITCODE -ne 0){throw 'QML deployment failed.'}
+& "$PSScriptRoot\Copy-CompilerRuntime.ps1" -Destination $payload
 & "$root\.tools\python\Scripts\python.exe" scripts\prepare_licenses.py --output "$payload\licenses\Qt" --sources-output "$root\artifacts\corresponding-sources"
 if($LASTEXITCODE -ne 0){throw 'Qt source/license preparation failed.'}
 & "$PSScriptRoot\Build-SensorBridge.ps1" -OutputDirectory "$payload\sensor-bridge"
