@@ -29,6 +29,8 @@ Unsupported readings show **— / Unavailable / Stale**, never synthetic zeroes.
 
 Qt uses a separate preference directory (`GlassStats-Qt` under the OS's local application data). First launch offers a read-only copy/import of legacy Windows settings. Legacy preferences and the old updater are untouched. Switching sign-in startup requires an explicit choice if the old app already starts automatically.
 
+See [migration and rollback](docs/MIGRATION.md) and [platform compatibility](docs/COMPATIBILITY.md) for details.
+
 Windows temperatures use the retained, isolated .NET/LibreHardwareMonitor bridge: unelevated GPU readings plus an optional administrator-installed service for CPU access. Settings provides setup/removal; cancellation leaves other metrics operational. The service/pipe are separate from the C# edition, read-only, user/SYSTEM restricted, and sample only with a connected overlay. The shared PawnIO driver is retained on uninstall.
 
 ## Experimental desktop integrations
