@@ -11,6 +11,16 @@ using namespace gs;
 class CoreTests:public QObject {
     Q_OBJECT
 private slots:
+    void settingsWindowRecovery(){
+        QVector<QRect> areas{{-1600,0,1600,860},{0,0,1920,1040}};
+        QRect visible(100,100,620,790);QCOMPARE(fitUtilityFrame(visible,areas,{1800,50}),visible);
+        auto lost=fitUtilityFrame({100000,-100000,620,790},areas,{1800,50});QVERIFY(areas[1].contains(lost));
+        auto negative=fitUtilityFrame({-100000,100000,620,790},areas,{-800,50});QVERIFY(areas[0].contains(negative));
+        auto partial=fitUtilityFrame({1800,100,620,790},areas,{1800,50});QVERIFY(areas[1].contains(partial));
+        auto huge=fitUtilityFrame({0,0,3000,3000},{{0,0,800,600}},{400,200});QCOMPARE(huge,QRect(0,0,800,600));
+        auto removed=fitUtilityFrame({-1200,20,620,790},{{0,0,1280,720}},{100,100});QVERIFY(QRect(0,0,1280,720).contains(removed));
+        QCOMPARE(fitUtilityFrame(visible,{},{}),visible);
+    }
     void malformedReadings(){Reading invalid=Reading::of(10,"bytes");invalid.value=std::numeric_limits<double>::quiet_NaN();QVERIFY(!memoryRatio(invalid,Reading::of(100,"bytes")));invalid.value=std::numeric_limits<double>::infinity();QVERIFY(!memoryRatio(Reading::of(1,"bytes"),invalid));auto now=QDateTime::currentDateTimeUtc();QVector<Sensor> sensors{{"cpu","CPU","CPU Package","CPU",45}};QCOMPARE(temperature(sensors,now.addSecs(10),"CPU",{},"",now).status,Availability::Stale);}
     void gpuAggregation(){QMap<QString,double> counters{{"pid_1_luid_0x0_0x123_phys_0_eng_0_engtype_3D",35},{"pid_2_luid_0x0_0x123_phys_0_eng_0_engtype_3D",45},{"pid_2_luid_0x0_0x123_phys_0_eng_1_engtype_Copy",25},{"pid_9_luid_0x0_0x124_phys_0_eng_0",100}};auto v=busiestEngine(counters,"00000000:00000123");QVERIFY(v);QCOMPARE(*v,80.);counters["pid_3_luid_0x0_0x123_phys_0_eng_0"]=50;QCOMPARE(*busiestEngine(counters,"00000000:00000123"),100.);}
     void gpuInvalidAndMemory(){QVERIFY(!parseGpuCounter("invalid"));QVERIFY(!busiestEngine({{"pid_luid_0x0_0x1_phys_0_eng_0",-1}},"00000000:00000001"));QVERIFY(parseGpuCounter("luid_0x00000000_0x00000123_phys_0"));QVERIFY(!busiestEngine({},"none"));}

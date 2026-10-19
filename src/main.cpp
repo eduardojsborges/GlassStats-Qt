@@ -19,6 +19,8 @@ static QString logPath;
 static QMutex logMutex;
 static void logMessage(QtMsgType type,const QMessageLogContext&,const QString& text){if(type==QtDebugMsg)return;QMutexLocker guard(&logMutex);QFile f(logPath);if(f.size()>1024*1024){QFile::remove(logPath+".old");f.rename(logPath+".old");f.setFileName(logPath);}if(f.open(QIODevice::Append))f.write((QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)+" "+text+"\n").toUtf8());fprintf(stderr,"%s\n",text.toUtf8().constData());}
 int main(int argc,char** argv){
+    // Request transparency before QML can create any native window/swap chain.
+    QQuickWindow::setDefaultAlphaBuffer(true);
     QApplication application(argc,argv);QCoreApplication::setOrganizationName("eduardojsborges");QCoreApplication::setApplicationName("GlassStats-Qt");QCoreApplication::setApplicationVersion(GLASSSTATS_VERSION);QApplication::setQuitOnLastWindowClosed(false);QQuickStyle::setStyle("Basic");
     QCommandLineParser parser;parser.addHelpOption();parser.addVersionOption();parser.addOptions({{"smoke","Run isolated UI checks"},{"soak","Run two-hour isolated stability check"},{"qml-check","Load the QML and native provider without changing preferences"},{"test-host","Run separate-process test host"},{"profile","Use a separate preference profile","directory"},{"qa-dir","Write explicit QA artifacts","directory"},{"startup","Launch at sign-in"}});parser.process(application);
     if(parser.isSet("test-host"))return gs::runTestHost(parser.value("qa-dir"));

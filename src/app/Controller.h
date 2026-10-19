@@ -45,7 +45,7 @@ class Controller:public QObject {
     quint64 sampleGeneration_=0,surfaceGeneration_=0,adaptiveFrames_=0;
     struct Label { QPointer<QQuickItem> item; QColor preferred; AdaptiveContrast contrast; };
     QMap<QString,Label> labels_;QVector<QPointer<QQuickItem>> exclusions_;
-    QPointer<QQuickWindow> window_;QSystemTrayIcon tray_;QMenu menu_;Updater updater_;
+    QPointer<QQuickWindow> window_;QPointer<QWindow> settingsWindow_;QSystemTrayIcon tray_;QMenu menu_;Updater updater_;
     QString path_,legacyPath_,status_,shortcutError_;QSizeF logical_{320,430};double renderScale_=.75;
     QVector<QRect> lastCovers_;QRect lastBounds_;QDateTime lastSample_;
     void apply(bool persist=true);void save();void scheduleSample();void receive(Frame frame,quint64 generation);
@@ -67,6 +67,8 @@ public:
     Q_INVOKABLE void setSetting(QString key,QVariant value);
     Q_INVOKABLE void resetDefaults();Q_INVOKABLE void importLegacy();Q_INVOKABLE void skipImport();
     Q_INVOKABLE void action(QString command);Q_INVOKABLE void setContentSize(double width,double height);
+    Q_INVOKABLE void presentSettings(QWindow* window);
+    Q_INVOKABLE void fitSettingsWindow(QWindow* window);
     Q_INVOKABLE void registerLabel(QString id,QQuickItem* item,QColor preferred);
     Q_INVOKABLE void unregisterLabel(QString id,QQuickItem* item);
     Q_INVOKABLE void registerExclusion(QQuickItem* item);Q_INVOKABLE void unregisterExclusion(QQuickItem* item);

@@ -22,6 +22,8 @@
 #include <vector>
 #include <memory>
 #include <cmath>
+#include <QPainterPath>
+#include <QRegion>
 
 namespace gs {
 namespace {
@@ -66,13 +68,13 @@ WindowsPlatform* WindowsPlatform::instance_=nullptr;
 WindowsPlatform::WindowsPlatform(QObject* parent):Platform(parent){instance_=this;selectionTimeout_.setSingleShot(true);selectionTimeout_.setInterval(30000);connect(&selectionTimeout_,&QTimer::timeout,this,[this]{cancelSelection();emit status("Window selection timed out.");});}
 WindowsPlatform::~WindowsPlatform(){cancelSelection();cleanupEvents();if(hwnd_){WTSUnRegisterSessionNotification(hwnd_);UnregisterHotKey(hwnd_,1);UnregisterHotKey(hwnd_,2);}if(powerNotification_)UnregisterPowerSettingNotification(powerNotification_);if(qApp)qApp->removeNativeEventFilter(this);instance_=nullptr;}
 Capabilities WindowsPlatform::capabilities()const{return {{"Monitoring",{"supported","Windows PDH, DXGI, memory APIs; sensors depend on hardware/driver availability"}},{"Attachment",{"supported","Native WinEvent hooks and independent top-level stacking"}},{"Adaptive text",{"supported","Reusable local GDI sampling; no pixels recorded"}},{"Global shortcuts",{"supported","Registration conflicts are reported"}},{"Backdrop",{"supported",backdropDescription()}}};}
-void WindowsPlatform::initialize(QWindow* window){window_=window;hwnd_=reinterpret_cast<HWND>(window_->winId());auto style=GetWindowLongPtrW(hwnd_,GWL_STYLE);SetWindowLongPtrW(hwnd_,GWL_STYLE,style&~(WS_CAPTION|WS_THICKFRAME));auto ex=GetWindowLongPtrW(hwnd_,GWL_EXSTYLE);SetWindowLongPtrW(hwnd_,GWL_EXSTYLE,(ex|WS_EX_NOACTIVATE|WS_EX_TOOLWINDOW)&~WS_EX_APPWINDOW);int noBorder=-2,noRounding=1,noNonClient=1;DwmSetWindowAttribute(hwnd_,34,&noBorder,4);DwmSetWindowAttribute(hwnd_,33,&noRounding,4);DwmSetWindowAttribute(hwnd_,2,&noNonClient,4);int backdrop=3;DwmSetWindowAttribute(hwnd_,38,&backdrop,4);SetWindowPos(hwnd_,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_FRAMECHANGED);qApp->installNativeEventFilter(this);
+void WindowsPlatform::initialize(QWindow* window){window_=window;hwnd_=reinterpret_cast<HWND>(window_->winId());auto style=GetWindowLongPtrW(hwnd_,GWL_STYLE);SetWindowLongPtrW(hwnd_,GWL_STYLE,style&~(WS_CAPTION|WS_THICKFRAME));auto ex=GetWindowLongPtrW(hwnd_,GWL_EXSTYLE);SetWindowLongPtrW(hwnd_,GWL_EXSTYLE,(ex|WS_EX_NOACTIVATE|WS_EX_TOOLWINDOW)&~WS_EX_APPWINDOW);int noBorder=-2,noRounding=1,noNonClient=1;DwmSetWindowAttribute(hwnd_,34,&noBorder,4);DwmSetWindowAttribute(hwnd_,33,&noRounding,4);DwmSetWindowAttribute(hwnd_,2,&noNonClient,4);int backdrop=1;DwmSetWindowAttribute(hwnd_,38,&backdrop,4);SetWindowPos(hwnd_,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_FRAMECHANGED);qApp->installNativeEventFilter(this);
     WTSRegisterSessionNotification(hwnd_,NOTIFY_FOR_THIS_SESSION);DWORD session=0;ProcessIdToSessionId(GetCurrentProcessId(),&session);LPWSTR info=nullptr;DWORD bytes=0;
     if(WTSQuerySessionInformationW(WTS_CURRENT_SERVER_HANDLE,session,WTSSessionInfoEx,&info,&bytes)){auto state=reinterpret_cast<WTSINFOEXW*>(info);if(state->Level==1)sessionLocked_=state->Data.WTSInfoExLevel1.SessionFlags==WTS_SESSIONSTATE_LOCK;WTSFreeMemory(info);}
     static const GUID displayGuid={0x6fe69556,0x704a,0x47a0,{0x8f,0x24,0xc2,0x8d,0x93,0x6f,0xda,0x47}};
     powerNotification_=RegisterPowerSettingNotification(hwnd_,&displayGuid,DEVICE_NOTIFY_WINDOW_HANDLE);
 }
-QString WindowsPlatform::backdropDescription()const{if(!hwnd_)return "Native Acrylic where supported; otherwise translucent tint";int type=0;return SUCCEEDED(DwmGetWindowAttribute(hwnd_,38,&type,4))&&type==3?"Windows desktop Acrylic (system policy may disable blur)":"Translucent tint (native blur unavailable on this system)";}
+QString WindowsPlatform::backdropDescription()const{if(!hwnd_)return "Native Acrylic where supported; otherwise translucent tint";int type=0;return SUCCEEDED(DwmGetWindowAttribute(hwnd_,38,&type,4))&&type==3?"Windows desktop Acrylic (system policy may disable blur)":placed_.radius>0?"Translucent tint (custom rounded clipping; rectangular system Acrylic disabled)":"Translucent tint (native blur unavailable on this system)";}
 QVector<Monitor> WindowsPlatform::monitors()const{QVector<Monitor> list;EnumDisplayMonitors(nullptr,nullptr,[](HMONITOR m,HDC,LPRECT,LPARAM data)->BOOL{auto out=reinterpret_cast<QVector<Monitor>*>(data);MONITORINFO info{};info.cbSize=sizeof info;if(GetMonitorInfoW(m,&info)){UINT x=96,y=96;GetDpiForMonitor(m,MDT_EFFECTIVE_DPI,&x,&y);out->push_back({rectOf(info.rcMonitor),rectOf(info.rcWork),double(x)});}return TRUE;},reinterpret_cast<LPARAM>(&list));return list;}
 QRect WindowsPlatform::bounds()const{RECT r{};GetWindowRect(hwnd_,&r);return rectOf(r);}
 QPoint WindowsPlatform::cursor()const{POINT p{};GetCursorPos(&p);return {p.x,p.y};}
@@ -82,8 +84,20 @@ bool WindowsPlatform::effectiveVisible()const{return hwnd_&&IsWindowVisible(hwnd
 bool WindowsPlatform::canHover()const{return !sessionLocked_&&!locked_&&!selecting_&&effectiveVisible()&&(!attached_||GetForegroundWindow()==target_);}
 QString WindowsPlatform::attachmentDescription()const{return attached_?windowName(target_):"Desktop overlay";}
 void WindowsPlatform::restoreStacking(){if(!hwnd_)return;UINT flags=SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOOWNERZORDER;if(!attached_){SetWindowPos(hwnd_,HWND_TOPMOST,0,0,0,0,flags);return;}if(!validTarget())return;bool band=GetWindowLongPtrW(target_,GWL_EXSTYLE)&WS_EX_TOPMOST,ours=GetWindowLongPtrW(hwnd_,GWL_EXSTYLE)&WS_EX_TOPMOST;if(band!=ours)SetWindowPos(hwnd_,band?HWND_TOPMOST:HWND_NOTOPMOST,0,0,0,0,flags);auto preceding=GetWindow(target_,GW_HWNDPREV);while(preceding==hwnd_)preceding=GetWindow(preceding,GW_HWNDPREV);if(!band&&preceding&&(GetWindowLongPtrW(preceding,GWL_EXSTYLE)&WS_EX_TOPMOST))preceding=nullptr;SetWindowPos(hwnd_,preceding,0,0,0,0,flags);}
-void WindowsPlatform::applyVisibility(){if(!hwnd_||!window_)return;QRect a;bool show=userVisible_&&!selecting_&&!sessionLocked_&&(!attached_||hostArea(a));bool changed=window_->isVisible()!=show||bool(IsWindowVisible(hwnd_))!=show;if(window_->isVisible()!=show)window_->setVisible(show);if(bool(IsWindowVisible(hwnd_))!=show)ShowWindow(hwnd_,show?SW_SHOWNOACTIVATE:SW_HIDE);if(changed)emit this->changed();}
-void WindowsPlatform::clip(){auto b=bounds();if(b.isEmpty())return;int diameter=std::max(2,qRound(placed_.radius*2));auto region=placed_.radius>0?CreateRoundRectRgn(0,0,b.width()+1,b.height()+1,diameter,diameter):CreateRectRgn(0,0,b.width(),b.height());QRect a;if(attached_&&hostArea(a)){auto c=CreateRectRgn(a.left()-b.left(),a.top()-b.top(),a.x()+a.width()-b.x(),a.y()+a.height()-b.y());CombineRgn(region,region,c,RGN_AND);DeleteObject(c);}if(!SetWindowRgn(hwnd_,region,TRUE))DeleteObject(region);}
+void WindowsPlatform::applyVisibility(){if(!hwnd_||!window_)return;QRect a;bool show=userVisible_&&!selecting_&&!sessionLocked_&&(!attached_||hostArea(a));bool changed=window_->isVisible()!=show||bool(IsWindowVisible(hwnd_))!=show;if(window_->isVisible()!=show)window_->setVisible(show);if(bool(IsWindowVisible(hwnd_))!=show)ShowWindow(hwnd_,show?SW_SHOWNOACTIVATE:SW_HIDE);if(show&&changed)clip();if(changed)emit this->changed();}
+void WindowsPlatform::clip(){auto b=bounds();if(b.isEmpty()||!window_)return;
+    // The system Acrylic material is rectangular and ignores the custom window region.
+    // Use the explicit tint fallback for rounded cards; square cards may use native Acrylic.
+    int desiredBackdrop=placed_.radius>0?1:3,currentBackdrop=0;
+    if(FAILED(DwmGetWindowAttribute(hwnd_,38,&currentBackdrop,4))||currentBackdrop!=desiredBackdrop)
+        DwmSetWindowAttribute(hwnd_,38,&desiredBackdrop,4);
+    // Keep Qt's mask in sync: its platform plugin reapplies it when a surface is shown or recreated.
+    const double dpr=window_->devicePixelRatio();
+    QPainterPath outline;outline.addRoundedRect(QRectF(0,0,b.width()/dpr,b.height()/dpr),placed_.radius/dpr,placed_.radius/dpr);
+    QRegion mask(outline.toFillPolygon().toPolygon());QRect host;
+    if(attached_&&hostArea(host))mask&=QRegion(QRectF((host.x()-b.x())/dpr,(host.y()-b.y())/dpr,host.width()/dpr,host.height()/dpr).toAlignedRect());
+    if(window_->mask()!=mask)window_->setMask(mask);
+int diameter=std::max(2,qRound(placed_.radius*2));auto region=placed_.radius>0?CreateRoundRectRgn(0,0,b.width()+1,b.height()+1,diameter,diameter):CreateRectRgn(0,0,b.width(),b.height());QRect a;if(attached_&&hostArea(a)){auto c=CreateRectRgn(a.left()-b.left(),a.top()-b.top(),a.x()+a.width()-b.x(),a.y()+a.height()-b.y());CombineRgn(region,region,c,RGN_AND);DeleteObject(c);}if(!SetWindowRgn(hwnd_,region,TRUE))DeleteObject(region);}
 void WindowsPlatform::place(Placement p){placed_=p;SetWindowPos(hwnd_,nullptr,p.rect.x(),p.rect.y(),p.rect.width(),p.rect.height(),SWP_NOACTIVATE|SWP_NOZORDER);clip();restoreStacking();applyVisibility();emit placementChanged();}
 void WindowsPlatform::placeAttached(QRect host,bool proportional){auto b=bounds();QPoint anchor=proportional||host!=lastHost_?absoluteAnchor(host,relative_):QPoint(b.x()+b.width(),b.y());auto m=selectMonitor(monitors(),anchor);lastHost_=host;place(fitHost(host,anchor,logical_,scale_*m.dpi/96.,radius_));}
 Placement WindowsPlatform::fitDesktop(std::optional<QPoint> anchor){QRect host;if(attached_){if(hostArea(host))placeAttached(host,false);else applyVisibility();return placed_;}return Platform::fitDesktop(anchor);}

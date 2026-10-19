@@ -17,6 +17,14 @@ C++20 / Qt Quick remake of [GlassStats](https://github.com/eduardojsborges/Glass
 
 Unsupported readings show **— / Unavailable / Stale**, never synthetic zeroes. Settings explains permissions and platform capabilities. Normal monitoring works offline, without accounts or telemetry.
 
+On Windows, custom-rounded cards use translucent tint to avoid the system Acrylic material's rectangular backing. Native Acrylic remains available for square cards where Windows supports it; the fallback preserves saved colors and opacity.
+
+## Download
+
+[**0.2.0-alpha.1 prerelease**](https://github.com/eduardojsborges/GlassStats-Qt/releases/tag/v0.2.0-alpha.1) · [Windows installer](https://github.com/eduardojsborges/GlassStats-Qt/releases/download/v0.2.0-alpha.1/GlassStats-Qt-0.2.0-alpha.1-windows-x64-setup.exe) · [Windows portable ZIP](https://github.com/eduardojsborges/GlassStats-Qt/releases/download/v0.2.0-alpha.1/GlassStats-Qt-0.2.0-alpha.1-windows-x64-portable.zip)
+
+Experimental Linux AppImage and Intel/Apple Silicon Mac DMGs are on the same release page. Review the platform limits before use. Extract the whole portable ZIP before launching `GlassStats.exe`.
+
 ## Use
 
 - Drag noninteractive card areas; release to fit the card to the monitor or attached window. Position and independent sizes are remembered.
@@ -45,7 +53,7 @@ Linux click-through requires a working desktop tray during this experimental pha
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for pinned Qt setup, CMake builds, tests, validation fixtures, and platform packaging. Qt is dynamically linked. A ready-to-run portable Windows copy must contain the whole deployed folder, not only the EXE. Source archives are not app packages.
 
-Preview packaging produces a Windows installer/ZIP, Linux AppImage, and separate Mac Intel/ARM64 DMGs. Public release publication follows package validation. Current packages are unsigned/unnotarized unless release notes explicitly say otherwise.
+Preview packaging produces a Windows installer/ZIP, Linux AppImage, and separate Mac Intel/ARM64 DMGs. The first public prerelease is available above; it is not a feature-complete compatibility declaration. Current packages are unsigned/unnotarized unless release notes explicitly say otherwise.
 
 The Qt updater checks **eduardojsborges/GlassStats-Qt**, independently of the old app. Daily checks can be disabled; manual checks, prerelease filtering, release notes, explicit download/install confirmation and SHA-256 verification are included. Migration from the old release is manual.
 

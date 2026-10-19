@@ -99,6 +99,6 @@ Window {
         }
         onClosing:function(close){close.accepted=false;app.action("glue")}
     }
-    Connections {target:app;function onOpenSettings(){settingsWindow.show();settingsWindow.raise();settingsWindow.requestActivate()}function onInstallConfirmation(path){settingsWindow.showInstall(path)}}
+    Connections {target:app;function onOpenSettings(){app.presentSettings(settingsWindow)}function onInstallConfirmation(path){settingsWindow.showInstall(path)}}
     Component.onCompleted:sizeTimer.start()
 }

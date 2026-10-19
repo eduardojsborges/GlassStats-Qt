@@ -51,6 +51,23 @@ ContrastResult AdaptiveContrast::select(QColor preferred,const QVector<QColor>& 
     double darkest=1,lightest=0;for(auto surface:surfaces){darkest=std::min(darkest,luminance(surface));lightest=std::max(lightest,luminance(surface));}
     return {*current_,score(*current_)<4.5 || lightest-darkest>.3};
 }
+QRect fitUtilityFrame(QRect frame,const QVector<QRect>& workAreas,QPoint fallback) {
+    QVector<Monitor> monitors;
+    bool centerVisible=false;
+    for(auto work:workAreas){
+        if(work.isEmpty())continue;
+        if(work.contains(frame))return frame;
+        centerVisible|=work.contains(frame.center());
+        monitors.push_back({work,work,96});
+    }
+    if(monitors.isEmpty())return frame;
+    auto work=selectMonitor(monitors,centerVisible?frame.center():fallback).work;
+    auto size=frame.size().expandedTo(QSize(1,1)).boundedTo(work.size());
+    auto position=centerVisible?frame.topLeft():QPoint(work.x()+(work.width()-size.width())/2,work.y()+(work.height()-size.height())/2);
+    position.setX(std::clamp(position.x(),work.x(),work.x()+work.width()-size.width()));
+    position.setY(std::clamp(position.y(),work.y(),work.y()+work.height()-size.height()));
+    return {position,size};
+}
 Monitor selectMonitor(const QVector<Monitor>& monitors,QPoint a) {
     if(monitors.isEmpty()) return {{0,0,1920,1080},{0,0,1920,1040},96};
     QPoint p(a.x()==std::numeric_limits<int>::min()?a.x():a.x()-1,a.y());

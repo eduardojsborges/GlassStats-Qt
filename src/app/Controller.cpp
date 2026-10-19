@@ -33,7 +33,7 @@ Controller::Controller(bool validation,QString profile,QObject* parent):QObject(
     connect(platform_.get(),&Platform::changed,this,[this]{invalidate();emit nativeChanged();});
     connect(platform_.get(),&Platform::placementChanged,this,&Controller::refreshGeometry);
     connect(platform_.get(),&Platform::positionCommitted,this,[this]{invalidate();if(!platform_->attached()){auto b=platform_->bounds();settings_["RightX"]=b.x()+b.width();settings_["Y"]=b.y();emit settingsChanged();saveTimer_.start();}});
-    connect(platform_.get(),&Platform::displayChanged,this,[this]{invalidate();fitWindow();});
+    connect(platform_.get(),&Platform::displayChanged,this,[this]{invalidate();fitWindow();if(settingsWindow_&&settingsWindow_->isVisible())fitSettingsWindow(settingsWindow_);});
     connect(platform_.get(),&Platform::targetLost,this,[this]{action("recover");setStatus("Attached window closed; GlassStats returned to the desktop.");});
     connect(platform_.get(),&Platform::requestCommand,this,&Controller::action);
     connect(platform_.get(),&Platform::status,this,&Controller::setStatus);
@@ -44,7 +44,14 @@ Controller::Controller(bool validation,QString profile,QObject* parent):QObject(
     connect(&updater_,&Updater::checkFinished,this,[this]{settings_["LastUpdateCheckUtc"]=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);saveTimer_.start();});
     connect(&updater_,&Updater::installerReady,this,&Controller::installConfirmation);
     connect(QGuiApplication::styleHints(),&QStyleHints::colorSchemeChanged,this,[this]{refreshPalette();});
-    connect(qApp,&QGuiApplication::screenAdded,this,[this](QScreen*){fitWindow();});connect(qApp,&QGuiApplication::screenRemoved,this,[this](QScreen*){fitWindow();});
+    auto recoverWindows=[this]{QTimer::singleShot(0,this,[this]{fitWindow();if(settingsWindow_&&settingsWindow_->isVisible())fitSettingsWindow(settingsWindow_);});};
+    auto watchScreen=[this,recoverWindows](QScreen* screen){
+        connect(screen,&QScreen::availableGeometryChanged,this,[recoverWindows](QRect){recoverWindows();});
+        connect(screen,&QScreen::logicalDotsPerInchChanged,this,[recoverWindows](qreal){recoverWindows();});
+    };
+    for(auto screen:QGuiApplication::screens())watchScreen(screen);
+    connect(qApp,&QGuiApplication::screenAdded,this,[watchScreen,recoverWindows](QScreen* screen){watchScreen(screen);recoverWindows();});
+    connect(qApp,&QGuiApplication::screenRemoved,this,[recoverWindows](QScreen*){recoverWindows();});
 }
 Controller::~Controller(){shuttingDown_=true;sampleTimer_.stop();adaptiveTimer_.stop();watchdog_.stop();dragTimer_.stop();save();tray_.hide();platform_->cancelSelection();QMetaObject::invokeMethod(worker_,[this]{monitor_.reset();capture_.reset();},Qt::BlockingQueuedConnection);monitorThread_.quit();monitorThread_.wait();}
 void Controller::initialize(QQuickWindow* w){window_=w;platform_->initialize(w);connect(w,&QWindow::screenChanged,this,[this]{invalidate();QTimer::singleShot(0,this,[this]{fitWindow();});});
@@ -76,6 +83,23 @@ void Controller::refreshPalette(){auto p=palette(settings_,QGuiApplication::styl
 void Controller::invalidate(){++surfaceGeneration_;}
 void Controller::fitWindow(){if(!window_)return;bool compact=settings_["ViewMode"]=="Compact";platform_->setLayout(logical_,.75*settings_[compact?"CompactScale":"Scale"].toDouble(),settings_[compact?"CompactCornerRadius":"CornerRadius"].toDouble());std::optional<QPoint> anchor;if(settings_.value("RightX").isValid()&&!settings_.value("RightX").isNull()&&settings_.value("Y").isValid())anchor=QPoint(settings_["RightX"].toInt(),settings_["Y"].toInt());if(platform_->attached())platform_->fitCurrent();else{auto p=platform_->fitDesktop(anchor);settings_["RightX"]=p.rect.x()+p.rect.width();settings_["Y"]=p.rect.y();}refreshGeometry();invalidate();}
 void Controller::refreshGeometry(){if(!window_)return;auto b=platform_->bounds();double d=window_->devicePixelRatio();renderScale_=b.width()/std::max(1.,logical_.width())/d;emit geometryChanged();}
+void Controller::fitSettingsWindow(QWindow* window){
+    if(!window||window==window_)return;
+    settingsWindow_=window;
+    QVector<QRect> workAreas;for(auto screen:QGuiApplication::screens())workAreas.push_back(screen->availableGeometry());
+    QPoint fallback=window_?window_->geometry().center():QCursor::pos();
+    QRect target=fitUtilityFrame(window->frameGeometry(),workAreas,fallback);
+    QMargins margins=window->frameMargins();
+    QRect client=target.adjusted(margins.left(),margins.top(),-margins.right(),-margins.bottom());
+    window->setMinimumSize(QSize(std::min(480,std::max(1,client.width())),std::min(450,std::max(1,client.height()))));
+    if(window->geometry()!=client)window->setGeometry(client);
+}
+void Controller::presentSettings(QWindow* window){
+    if(!window||window==window_)return;
+    window->showNormal();fitSettingsWindow(window);window->raise();window->requestActivate();
+    QPointer<QWindow> guarded=window;
+    QTimer::singleShot(0,this,[this,guarded]{if(guarded&&guarded->isVisible())fitSettingsWindow(guarded);});
+}
 void Controller::setContentSize(double width,double height){if(!std::isfinite(width)||!std::isfinite(height)||width<=0||height<=0)return;QSizeF size(std::ceil(width),std::ceil(height));if(size==logical_)return;logical_=size;fitWindow();saveTimer_.start();}
 void Controller::registerLabel(QString id,QQuickItem* item,QColor preferred){if(!item||id.isEmpty())return;auto i=labels_.find(id);if(i!=labels_.end()&&i->item==item){if(i->preferred!=preferred){i->preferred=preferred;i->contrast=AdaptiveContrast();invalidate();}return;}labels_[id]={item,preferred,{}};invalidate();}
 void Controller::unregisterLabel(QString id,QQuickItem* item){auto i=labels_.find(id);if(i!=labels_.end()&&i->item==item){labels_.erase(i);textColors_.remove(id);invalidate();}}

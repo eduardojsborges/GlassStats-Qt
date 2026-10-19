@@ -8,6 +8,7 @@ ApplicationWindow {
     objectName:"settingsWindow"
     title:"GlassStats settings · Qt preview"
     width:620;height:790;minimumWidth:480;minimumHeight:450;visible:false
+    onScreenChanged:if(visible)Qt.callLater(function(){app.fitSettingsWindow(settingsWindow)})
     property bool dark:app.settings.Theme==="Dark"||(app.settings.Theme==="System"&&!!app.colors.dark)
     property color ink:dark?"#F5F7FF":"#181D27"
     property color muted:dark?"#B5BFD5":"#4D596F"
@@ -16,7 +17,7 @@ ApplicationWindow {
     color:dark?"#191C26":"#F4F6FA"
     palette.window:color;palette.windowText:ink;palette.text:ink;palette.buttonText:ink
     palette.base:dark?"#252A38":"#FFFFFF";palette.button:dark?"#303647":"#E5EAF3";palette.highlight:app.colors.accent||"#7CA8FF";palette.highlightedText:"#101522"
-    function showInstall(path){installerPath=path;show();raise();requestActivate();installDialog.open()}
+    function showInstall(path){installerPath=path;app.presentSettings(settingsWindow);installDialog.open()}
     ScrollView {
         anchors.fill:parent;contentWidth:availableWidth;clip:true
         ColumnLayout {

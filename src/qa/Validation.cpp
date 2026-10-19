@@ -14,6 +14,7 @@
 #include <QQuickItem>
 #include <QThread>
 #include <QCursor>
+#include <QScreen>
 #ifdef Q_OS_WIN
 #include <windows.h>
 #include <psapi.h>
@@ -29,6 +30,13 @@ void screenCapture(Controller* app,QString path){
 #else
     Q_UNUSED(app);Q_UNUSED(path);
 #endif
+}
+bool roundedCorners(Controller* app,QQuickWindow* window,const QString& path){
+    screenCapture(app,path);QImage desktop(path),surface=window->grabWindow();
+    surface.save(path+".surface.png");write(path+".json",{{"AlphaBits",window->format().alphaBufferSize()},{"MaskEmpty",window->mask().isEmpty()},{"DesktopCorner",desktop.isNull()?QString():desktop.pixelColor(0,0).name(QColor::HexArgb)},{"SurfaceCorner",surface.isNull()?QString():surface.pixelColor(0,0).name(QColor::HexArgb)}});if(desktop.isNull()||surface.isNull()||window->format().alphaBufferSize()<8||window->mask().isEmpty())return false;
+    for(auto point:{QPoint(0,0),QPoint(desktop.width()-1,0),QPoint(0,desktop.height()-1),QPoint(desktop.width()-1,desktop.height()-1)})
+        if(luminance(desktop.pixelColor(point))>.02||surface.pixelColor(point).alpha()!=0)return false;
+    return true;
 }
 class HostWindow:public QWidget {
 public:
@@ -86,6 +94,9 @@ Q_UNUSED(handle);Q_UNUSED(cmd);
         }});
         steps->push_back({"OpenSettings",100,[=]{app->action("settings");return true;}});
         steps->push_back({"SettingsFirstOpenVisible",600,[=]{auto settings=window->findChild<QWindow*>("settingsWindow");bool ok=settings&&settings->isVisible()&&settings->windowState()!=Qt::WindowMinimized;if(settings)settings->hide();command(0x8103);return ok;}});
+        steps->push_back({"SettingsOffscreenSetup",100,[=]{auto settings=window->findChild<QWindow*>("settingsWindow");if(!settings)return false;settings->setPosition(100000,-100000);settings->hide();app->action("settings");return true;}});
+        steps->push_back({"SettingsOffscreenRecovery",500,[=]{auto settings=window->findChild<QWindow*>("settingsWindow");if(!settings||!settings->isVisible())return false;bool fits=false;for(auto screen:QGuiApplication::screens())fits|=screen->availableGeometry().contains(settings->frameGeometry());settings->showMinimized();app->action("settings");return fits;}});
+        steps->push_back({"SettingsMinimizedRecovery",500,[=]{auto settings=window->findChild<QWindow*>("settingsWindow");bool ok=settings&&settings->isVisible()&&settings->windowState()!=Qt::WindowMinimized;bool fits=false;if(settings){for(auto screen:QGuiApplication::screens())fits|=screen->availableGeometry().contains(settings->frameGeometry());settings->hide();}command(0x8103);return ok&&fits;}});
         steps->push_back({"FahrenheitLargeFonts",200,[=]{app->setSetting("TemperatureUnit","F");app->setSetting("CompactValueFontSize",48);app->setSetting("CompactDetailFontSize",24);return true;}});
         steps->push_back({"LargeFontsFit",500,[=]{auto b=app->platform()->bounds();return b.width()>100&&b.height()>30;}});
         steps->push_back({"HiddenMetrics",200,[=]{app->setSetting("ShowCpu",false);app->setSetting("ShowGpu",false);app->setSetting("ShowRam",false);app->setSetting("ShowVram",false);return true;}});
@@ -101,6 +112,12 @@ Q_UNUSED(handle);Q_UNUSED(cmd);
         steps->push_back({"CoverDetected",600,[=]{return fullyCovered(app->platform()->bounds(),app->platform()->coveredAreas());}});
         steps->push_back({"Uncover",100,[=]{command(0x8108);command(0x8109);return true;}});
         steps->push_back({"DarkCapture",800,[=]{window->grabWindow().save(directory+"/full-dark.png");screenCapture(app,directory+"/screen-full-dark.png");return true;}});
+        steps->push_back({"WhiteCardOnBlack",100,[=]{app->setSetting("BackgroundColor","#FFFFFF");app->setSetting("ProtectContrast",false);app->setSetting("Opacity",1.);app->setSetting("CornerRadius",32);app->platform()->setUserVisible(false);app->platform()->setUserVisible(true);return true;}});
+        steps->push_back({"FullTrueRoundedCorners",700,[=]{return roundedCorners(app,window,directory+"/corners-full.png");}});
+        steps->push_back({"CompactRoundSetup",100,[=]{app->setSetting("ViewMode","Compact");app->setSetting("CompactCornerRadius",80);return true;}});
+        steps->push_back({"CompactTrueRoundedCorners",700,[=]{return roundedCorners(app,window,directory+"/corners-compact.png");}});
+        steps->push_back({"LockRoundSetup",100,[=]{app->setSetting("Locked",true);return true;}});
+        steps->push_back({"LockedTrueRoundedCorners",500,[=]{bool ok=roundedCorners(app,window,directory+"/corners-locked.png");app->setSetting("Locked",false);return ok;}});
         steps->push_back({"TinyHost",100,[=]{command(0x810E);return true;}});
         steps->push_back({"TinyHostFits",700,[=]{auto b=app->platform()->bounds();return b.width()<=160&&b.height()<=130;}});
         steps->push_back({"LockedRecovery",300,[=]{app->setSetting("Locked",true);app->action("recover");return !app->platform()->attached()&&!app->platform()->locked()&&app->platform()->userVisible();}});

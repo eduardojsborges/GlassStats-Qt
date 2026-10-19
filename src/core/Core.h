@@ -44,6 +44,7 @@ public:
 struct Monitor { QRect bounds, work; double dpi = 96; };
 struct Placement { QRect rect; double radius = 0, pixels = 1; };
 Monitor selectMonitor(const QVector<Monitor>& monitors, QPoint anchor);
+QRect fitUtilityFrame(QRect frame, const QVector<QRect>& workAreas, QPoint fallback);
 Placement fit(const QVector<Monitor>& monitors, std::optional<QPoint> anchor, QSizeF logical, double scale, double radius, QPoint cursor);
 Placement fitHost(QRect host, QPoint anchor, QSizeF logical, double pixels, double radius);
 QPointF relativeAnchor(QRect host, QPoint anchor);
